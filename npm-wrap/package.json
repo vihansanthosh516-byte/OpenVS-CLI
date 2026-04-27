@@ -1,0 +1,50 @@
+{
+  "name": "openvs-cli",
+  "version": "1.0.0",
+  "description": "OpenVS CLI — Multi-agent AI operating system terminal. Swarm orchestration, consensus engine, plugin ecosystem, and crash-proof execution from your terminal.",
+  "main": "src/launcher.js",
+  "type": "module",
+  "bin": {
+    "openvs": "./bin/openvs.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "agents",
+    "swarm",
+    "developer-tools",
+    "coding",
+    "codex",
+    "gemini",
+    "terminal",
+    "multi-agent",
+    "orchestration",
+    "consensus",
+    "textual",
+    "nvidia",
+    "openvs"
+  ],
+  "author": "OpenVS",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openvs/openvs-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/openvs/openvs-cli/issues"
+  },
+  "homepage": "https://github.com/openvs/openvs-cli#readme",
+  "scripts": {
+    "postinstall": "node src/doctor.js",
+    "test": "node src/doctor.js",
+    "prepublishOnly": "node src/doctor.js"
+  }
+}

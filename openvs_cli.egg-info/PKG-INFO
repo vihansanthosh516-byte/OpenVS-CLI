@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: openvs-cli
+Version: 1.0.0
+Summary: OpenVS CLI — AI Operating System Terminal
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: textual>=0.40
+Requires-Dist: rich>=13.0
+Requires-Dist: httpx>=0.24
+Requires-Dist: fastapi>=0.100
+Requires-Dist: uvicorn>=0.23
+Requires-Dist: faiss-cpu>=1.7
+Requires-Dist: numpy>=1.24
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: pytest>=7.0

@@ -1,0 +1,19 @@
+# OpenVS CLI npm package — files to exclude from publish
+*.pyc
+__pycache__/
+.pytest_cache/
+*.egg-info/
+.env
+memory_store/
+workspace/
+tests/
+core/
+agents/
+tools/
+memory/
+api.py
+cli.py
+*.jsonl
+*.json.bak
+.DS_Store
+Thumbs.db

@@ -1,0 +1,8 @@
+requests
+httpx
+fastapi
+uvicorn
+faiss-cpu
+numpy
+python-dotenv
+pytest

@@ -1,0 +1,24 @@
+{
+  "task": "add error handling to main.py",
+  "description": "Golden run: agent should read, plan patches, and verify",
+  "expected_steps": {
+    "min": 2,
+    "max": 6
+  },
+  "expected_tools": [
+    "read",
+    "patch"
+  ],
+  "expected_states": [
+    "init",
+    "plan",
+    "validate",
+    "execute",
+    "verify",
+    "done"
+  ],
+  "expected_outcome": "completed",
+  "expected_guard_violations": 0,
+  "expected_files_modified": ["main.py"],
+  "created_at": "2026-04-24"
+}

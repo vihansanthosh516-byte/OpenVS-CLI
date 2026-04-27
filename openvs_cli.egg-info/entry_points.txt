@@ -1,0 +1,2 @@
+[console_scripts]
+openvs = openvs.__main__:run
