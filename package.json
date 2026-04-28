@@ -1,0 +1,30 @@
+{
+  "name": "openvs",
+  "version": "0.1.0",
+  "description": "OpenVS — AI Operating System for CLI",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "openvs": "./bin/openvs.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "engine"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "agents",
+    "orchestration",
+    "openvs"
+  ],
+  "author": "OpenVS",
+  "license": "MIT",
+  "scripts": {
+    "doctor": "node src/system/health.js"
+  }
+}

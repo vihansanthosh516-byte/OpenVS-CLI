@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+memory_store/events.jsonl
+memory_store/job_queue.json
+memory_store/traces/
