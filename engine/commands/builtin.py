@@ -1,16 +1,54 @@
+import json
+import os
 from engine.commands.registry import registry
+from engine import model_client as mc
 
 
 def cmd_help(args, orchestrator):
-    return registry.help_text()
+    return """COMMANDS
+ ────────────────────────────
+ Model Control:
+   /model <name>       Switch active model
+   /models             List available models + key status
+
+ Config:
+   /config             Show current config
+   /config set-key <provider> <key>
+                       Set API key for provider (nvidia/openai/local)
+
+ Jobs:
+   /jobs               Recent jobs
+   /jobs history       Persisted job history
+
+ System:
+   /status             Engine status
+   /events             Event store operations
+   /diagnostics        Observability & traces
+
+ Execution:
+   /swarm              Swarm/worker status
+   /coordinator        Task coordinator
+   /network            Network layer
+   /replay             Event replay engine
+   /plugin             Plugin management
+   /agents             Agent roles
+
+ Exit:
+   /exit               Quit session"""
 
 
 def cmd_status(args, orchestrator):
     status = orchestrator.status()
+    model_info = mc.MODELS.get(orchestrator.model, {})
+    provider = model_info.get("provider", "?")
+    key_ok = bool(mc.PROVIDER_KEYS.get(provider, ""))
+    client_state = "connected" if key_ok else "no API key"
+
     lines = [
         f"Engine: v{status['version']}",
-        f"Model: {status['model']}",
-        f"Client: {status['model_client']}",
+        f"Model: {status['model']} ({model_info.get('model_id', '?')})",
+        f"Provider: {provider} ({'key set' if key_ok else 'NO KEY'})",
+        f"Client: {client_state}",
         f"Mode: {status['mode']}",
         f"Jobs: {status['jobs_completed']} completed, {status['jobs_failed']} failed, {status['jobs_total']} total",
         f"Uptime: {status['uptime']}",
@@ -20,14 +58,31 @@ def cmd_status(args, orchestrator):
 
 def cmd_model(args, orchestrator):
     if not args:
-        return f"Current model: {orchestrator.model}\nAvailable: qwen, nemotron, gemma, glm, local"
+        return cmd_models([], orchestrator)
 
     model = args[0].lower()
-    valid = ["qwen", "nemotron", "gemma", "glm", "local"]
-    if model in valid:
+    if model in mc.MODELS:
         orchestrator.model = model
-        return f"Model switched to: {model}"
-    return f"Unknown model: {model}\nAvailable: {', '.join(valid)}"
+        info = mc.MODELS[model]
+        provider = info.get("provider", "?")
+        key_ok = bool(mc.PROVIDER_KEYS.get(provider, ""))
+        return f"Model switched\n  Active: {model} ({info.get('model_id', '?')})\n  Provider: {provider}\n  API Key: {'configured' if key_ok else 'MISSING — run /config set-key " + provider + " <key>'}"
+    return f"Unknown model: {model}\nType /models to list available models"
+
+
+def cmd_models(args, orchestrator):
+    current = orchestrator.model
+    lines = ["Available Models:", ""]
+    for name, info in mc.MODELS.items():
+        provider = info.get("provider", "?")
+        key_ok = bool(mc.PROVIDER_KEYS.get(provider, ""))
+        marker = " <--" if name == current else ""
+        key_icon = "+" if key_ok else "NO KEY"
+        lines.append(f"  {name:16s} {info.get('model_id', '?'):40s} [{provider}] [{key_icon}]{marker}")
+    lines.append("")
+    lines.append(f"Active: {current}")
+    lines.append("Use /model <name> to switch")
+    return "\n".join(lines)
 
 
 def cmd_jobs(args, orchestrator):
@@ -50,11 +105,71 @@ def cmd_jobs(args, orchestrator):
 
 
 def cmd_config(args, orchestrator):
-    config = orchestrator.config
-    lines = ["OpenVS Config:", ""]
-    for key, value in sorted(config.items()):
-        lines.append(f" {key:24s} = {value}")
-    return "\n".join(lines)
+    if args and args[0] == "set-key":
+        if len(args) < 3:
+            return "Usage: /config set-key <provider> <key>\nProviders: nvidia, openai, local"
+        provider = args[1].lower()
+        key = args[2]
+        _config_dir = os.getenv("OPENVS_CONFIG_DIR", os.path.join(os.path.expanduser("~"), ".openvs"))
+        config_path = os.path.join(_config_dir, "config.json")
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, "r") as f:
+                    cfg = json.load(f)
+            else:
+                cfg = {}
+            if "api_keys" not in cfg:
+                cfg["api_keys"] = {}
+            cfg["api_keys"][provider] = key
+            if not cfg.get("provider"):
+                cfg["provider"] = provider
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            with open(config_path, "w") as f:
+                json.dump(cfg, f, indent=2)
+            mc.PROVIDER_KEYS = mc._load_api_keys()
+            orchestrator.model_client.available = orchestrator.model_client._check_connectivity()
+            masked = "*" * 8 + key[-4:] if len(key) > 4 else "****"
+            return f"API key set for {provider}: {masked}\nModel client reloaded."
+        except Exception as e:
+            return f"Error setting key: {e}"
+
+    if args and args[0] == "set":
+        if len(args) < 3:
+            return "Usage: /config set <key> <value>"
+        key = args[1]
+        value = args[2]
+        _config_dir = os.getenv("OPENVS_CONFIG_DIR", os.path.join(os.path.expanduser("~"), ".openvs"))
+        config_path = os.path.join(_config_dir, "config.json")
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, "r") as f:
+                    cfg = json.load(f)
+            else:
+                cfg = {}
+            cfg[key] = value
+            with open(config_path, "w") as f:
+                json.dump(cfg, f, indent=2)
+            return f"Config updated: {key} = {value}"
+        except Exception as e:
+            return f"Error: {e}"
+
+    _config_dir = os.getenv("OPENVS_CONFIG_DIR", os.path.join(os.path.expanduser("~"), ".openvs"))
+    config_path = os.path.join(_config_dir, "config.json")
+    try:
+        with open(config_path, "r") as f:
+            cfg = json.load(f)
+        masked = dict(cfg)
+        if "api_keys" in masked and isinstance(masked["api_keys"], dict):
+            masked["api_keys"] = {
+                k: ("*" * 8 + v[-4:]) if isinstance(v, str) and len(v) > 4 else "****"
+                for k, v in masked["api_keys"].items() if v
+            }
+        lines = ["Config:", ""]
+        for k, v in sorted(masked.items()):
+            lines.append(f"  {k:20s} = {v}")
+        return "\n".join(lines)
+    except Exception:
+        return "No config file found. Use /config set-key <provider> <key> to get started."
 
 
 def cmd_agents(args, orchestrator):
@@ -97,7 +212,7 @@ def cmd_events(args, orchestrator):
 
     if args and args[0] == "compat" and es:
         result = es.validate_backwards_compat()
-        lines = [f"Compatibility Check:", ""]
+        lines = ["Compatibility Check:", ""]
         lines.append(f" Checked: {result['checked']}")
         lines.append(f" Status: {result['status']}")
         if result.get("incompatible"):
@@ -245,9 +360,9 @@ def cmd_replay(args, orchestrator):
             if isinstance(state, dict):
                 for k, v in state.items():
                     if isinstance(v, list):
-                        lines.append(f"   {k}: {len(v)} items")
+                        lines.append(f"  {k}: {len(v)} items")
                     else:
-                        lines.append(f"   {k}: {v}")
+                        lines.append(f"  {k}: {v}")
         return "\n".join(lines)
 
     if args[0] == "job" and len(args) > 1:
@@ -326,8 +441,9 @@ def register_default_commands():
     registry.register("/help", cmd_help, description="Show available commands", aliases=["/h"])
     registry.register("/status", cmd_status, description="Show engine status", aliases=["/st"])
     registry.register("/model", cmd_model, description="Show or switch model")
+    registry.register("/models", cmd_models, description="List available models", aliases=["/ml"])
     registry.register("/jobs", cmd_jobs, description="Show recent jobs", aliases=["/j"])
-    registry.register("/config", cmd_config, description="Show current config", aliases=["/cfg"])
+    registry.register("/config", cmd_config, description="Show or edit config", aliases=["/cfg"])
     registry.register("/agents", cmd_agents, description="Show agent roles")
     registry.register("/events", cmd_events, description="Event history and store", aliases=["/ev"])
     registry.register("/plugin", cmd_plugin, description="Plugin management", aliases=["/pl"])

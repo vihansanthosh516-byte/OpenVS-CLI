@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+import json
 
 _engine_dir = os.path.dirname(os.path.abspath(__file__))
 _project_dir = os.path.dirname(_engine_dir)
@@ -191,6 +192,9 @@ def dispatch(request, ctx):
 
     if req_type == "network":
         return handle_network(payload, ctx)
+
+    if req_type == "config":
+        return handle_config(payload, ctx)
 
     return {"status": "error", "error": f"unknown request type: {req_type}"}
 
@@ -566,6 +570,72 @@ def handle_network(request, ctx):
         return {"status": "ok", "nodes": ctx.network.node_registry.list_all()}
 
     return {"status": "error", "error": f"unknown network action: {action}"}
+
+
+def handle_config(request, ctx):
+    action = request.get("action", "show")
+    config_dir = os.getenv("OPENVS_CONFIG_DIR", os.path.join(os.path.expanduser("~"), ".openvs"))
+    config_path = os.path.join(config_dir, "config.json")
+
+    if action == "show":
+        try:
+            with open(config_path, "r") as f:
+                cfg = json.load(f)
+            masked = dict(cfg)
+            if "api_keys" in masked and isinstance(masked["api_keys"], dict):
+                masked["api_keys"] = {k: ("*" * 8 + v[-4:]) if isinstance(v, str) and len(v) > 4 else "****" for k, v in masked["api_keys"].items() if v}
+            return {"status": "ok", "config": masked}
+        except Exception:
+            return {"status": "ok", "config": {}}
+
+    if action == "set-key":
+        provider = request.get("provider", "")
+        key = request.get("key", "")
+        if not provider or not key:
+            return {"status": "error", "error": "usage: set-key <provider> <key>"}
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, "r") as f:
+                    cfg = json.load(f)
+            else:
+                cfg = {}
+            if "api_keys" not in cfg:
+                cfg["api_keys"] = {}
+            cfg["api_keys"][provider] = key
+            if not cfg.get("provider"):
+                cfg["provider"] = provider
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            with open(config_path, "w") as f:
+                json.dump(cfg, f, indent=2)
+            from engine import model_client
+            model_client.PROVIDER_KEYS = model_client._load_api_keys()
+            model_client_reload = model_client.ModelClient()
+            ctx.orchestrator.model_client = model_client_reload
+            bus.emit("config_updated", {"action": "set-key", "provider": provider})
+            return {"status": "ok", "message": f"API key set for {provider}"}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    if action == "set":
+        key = request.get("key", "")
+        value = request.get("value", "")
+        if not key:
+            return {"status": "error", "error": "key required"}
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, "r") as f:
+                    cfg = json.load(f)
+            else:
+                cfg = {}
+            cfg[key] = value
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            with open(config_path, "w") as f:
+                json.dump(cfg, f, indent=2)
+            return {"status": "ok", "message": f"config '{key}' updated"}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    return {"status": "error", "error": f"unknown config action: {action}"}
 
 
 if __name__ == "__main__":

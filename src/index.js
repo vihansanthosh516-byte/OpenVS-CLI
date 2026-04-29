@@ -4,14 +4,15 @@ import { bootstrap } from "./runtime/bootstrap.js";
 import { loadConfig } from "./system/config.js";
 import { getPaths } from "./system/paths.js";
 import { launchEngine } from "./runtime/launcher.js";
+import { printBox, printError, printDim } from "./cli/prompt_renderer.js";
 
-const VERSION = "0.5.0";
+const VERSION = "0.1.0-beta.1";
 
 export async function run() {
   const args = process.argv.slice(2);
 
   if (args.includes("--version") || args.includes("-v")) {
-    console.log(`OpenVS v${VERSION}`);
+    console.log(`Logos CLI v${VERSION}`);
     return;
   }
 
@@ -45,22 +46,25 @@ async function startEngine() {
 
 function printHelp() {
   console.log(`
-OpenVS v${VERSION} — AI Operating System for CLI
+Logos CLI v${VERSION} — AI Operating System for Agents & Swarms
 
 Usage:
-  openvs              Start interactive session
-  openvs --version    Show version
-  openvs --doctor     Run health checks
-  openvs --help       Show this help
+  logos                Start interactive session
+  logos --version      Show version
+  logos --doctor       Run health checks
+  logos --help         Show this help
+
+First time?
+  1. Get an API key from NVIDIA (https://build.nvidia.com)
+  2. Run: /config set-key nvidia <your-key>
+  3. Start chatting
 
 Slash commands (inside session):
-  /status             Show engine status
-  /help               Show available commands
-  /model <name>       Switch AI model
-  /config             View config
+  /model <name>       Switch model
+  /models             List available models
+  /config             Show config
+  /status             Engine status
+  /help               Show all commands
   /exit               Exit session
-
-Keyboard:
-  CTRL+C              Exit
 `);
 }

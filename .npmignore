@@ -1,0 +1,58 @@
+# Dev / build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info
+*.save
+*.save.*
+dist/
+build/
+.eggs/
+
+# Python virtual envs
+venv/
+.venv/
+env/
+
+# Test / CI
+tests/
+.git/
+.github/
+.gitignore
+
+# Docs / non-essential
+README.md
+LICENSE
+*.md
+
+# Project-specific non-publish files
+npm-wrap/
+openvs/
+openvs_cli.egg-info/
+workspace/
+agents/
+memory/
+tools/
+api.py
+cli.py
+core/
+pyproject.toml
+requirements.txt
+.env
+.env.*
+
+# Scripts (not needed at runtime)
+scripts/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Config that should NOT ship
+.openvs/

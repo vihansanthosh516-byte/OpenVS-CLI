@@ -6,7 +6,7 @@ import { join } from "path";
 
 export async function runDoctor() {
   console.log("");
-  console.log("  OpenVS Doctor");
+  console.log(" Logos Doctor");
   console.log("  " + "=".repeat(40));
   console.log("");
 

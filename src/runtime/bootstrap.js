@@ -6,7 +6,7 @@ export function bootstrap({ os, python, paths, config }) {
   if (!python) {
     console.error("");
     console.error("  Error: Python 3.11+ not found.");
-    console.error("  OpenVS requires Python 3.11 or later.");
+    console.error("  Logos CLI requires Python 3.11 or later.");
     console.error("");
     console.error("  Install: https://python.org/downloads");
     console.error("");
@@ -19,8 +19,9 @@ export function bootstrap({ os, python, paths, config }) {
   const engineExists = existsSync(join(paths.engineDir, "main.py"));
   if (!engineExists) {
     console.error("");
-    console.error("  Error: OpenVS Python engine not found.");
+    console.error("  Error: Logos engine not found.");
     console.error("  Expected at: " + paths.engineDir);
+    console.error("  Reinstall: npm install -g logos-cli");
     console.error("");
     return false;
   }

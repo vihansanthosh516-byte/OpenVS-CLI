@@ -3,7 +3,8 @@ from engine.errors import SecurityError
 
 
 ALLOWED_COMMANDS = {
-    "/help", "/h", "/status", "/st", "/model", "/jobs", "/j",
+    "/help", "/h", "/status", "/st", "/model", "/models", "/ml",
+    "/jobs", "/j",
     "/config", "/cfg", "/agents", "/events", "/ev",
     "/plugin", "/pl", "/diagnostics", "/diag",
     "/swarm", "/sw",

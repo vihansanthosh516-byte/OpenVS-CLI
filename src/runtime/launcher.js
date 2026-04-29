@@ -1,6 +1,14 @@
 import { spawn } from "child_process";
 import { join } from "path";
 import { createBridge } from "../bridge/bridge.js";
+import {
+  print, printDim, printSuccess, printError, printBox,
+  formatModelResponse, formatError, formatApiKeyStatus,
+} from "../cli/prompt_renderer.js";
+import { createPromptLabel, formatBootScreen, formatShutdown } from "../cli/status_ui.js";
+import { handleBridgeError } from "../cli/error_ui.js";
+import { executeWithSpinner } from "../cli/stream_ui.js";
+import { Spinner } from "../cli/spinner.js";
 
 export async function launchEngine({ python, paths, config }) {
   const engineScript = join(paths.engineDir, "main.py");
@@ -21,9 +29,7 @@ export async function launchEngine({ python, paths, config }) {
     if (msg) {
       for (const line of msg.split("\n")) {
         if (line.startsWith("[ENGINE]")) {
-          console.error(line);
-        } else {
-          console.error(`  [engine] ${line}`);
+          printDim(`  ${line}`);
         }
       }
     }
@@ -31,7 +37,7 @@ export async function launchEngine({ python, paths, config }) {
 
   proc.on("exit", (code) => {
     if (code !== 0 && code !== null) {
-      console.error(`  Engine exited with code ${code}`);
+      printError(`Engine exited with code ${code}`);
     }
     process.exit(code || 0);
   });
@@ -44,30 +50,51 @@ export async function launchEngine({ python, paths, config }) {
     proc.kill("SIGTERM");
   });
 
-  await startREPL(bridge, config);
+  await startREPL(bridge, config, paths);
 }
 
-async function startREPL(bridge, config) {
+async function startREPL(bridge, config, paths) {
   const { createInterface } = await import("readline");
+
+  const spinner = new Spinner();
+  spinner.start("connecting to engine");
+
+  const initResp = await bridge.request({ type: "init", config });
+
+  spinner.stop();
+
+  if (initResp.status !== "ok") {
+    printError("Engine init failed: " + (initResp.error || "unknown"));
+    process.exit(1);
+  }
+
+  const engineVer = initResp.version || "0.5.0";
+  const model = config.default_model || "qwen";
+  const provider = config.provider || "nvidia";
+  const workers = initResp.workers || 3;
+  const hasKey = !!(config.api_keys?.[provider] || process.env[`${provider.toUpperCase()}_API_KEY`]);
+
+  const boot = formatBootScreen(engineVer, model, provider, workers, hasKey);
+  printBox(boot.title, boot.lines);
+
+  if (!hasKey) {
+    print("");
+    printDim("  No NVIDIA API key configured.");
+    printDim("  Get a key at: https://build.nvidia.com");
+    printDim("  Then run: /config set-key nvidia YOUR_KEY");
+    print("");
+  }
+
+  printDim("  Type /help for commands");
+  print("");
+
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: "openvs> ",
+    prompt: createPromptLabel(model, provider),
   });
 
-  const initResp = await bridge.request({ type: "init", config });
-  if (initResp.status === "ok") {
-    const protoVer = initResp._meta?.protocol_version || 1;
-    const engineVer = initResp.version || "0.3.0";
-    const lifecycle = initResp.lifecycle || "ready";
-    const plugins = initResp.plugins || 0;
-    console.log(`  OpenVS v${engineVer} — engine ready (lifecycle: ${lifecycle}, plugins: ${plugins})`);
-    console.log(`  Model: ${config.default_model} | Type /help for commands`);
-    console.log("");
-  } else {
-    console.error("  Engine init failed:", initResp.error || "unknown");
-    process.exit(1);
-  }
+  let currentModel = model;
 
   rl.prompt();
 
@@ -80,18 +107,47 @@ async function startREPL(bridge, config) {
 
     if (input === "/exit" || input === "/quit") {
       await bridge.request({ type: "shutdown" });
+      print("");
+      const shutdownLines = formatShutdown();
+      for (const l of shutdownLines) {
+        if (l) printDim(`  ${l}`);
+      }
       rl.close();
       return;
     }
 
     if (input.startsWith("/")) {
+      const parts = input.split(/\s+/);
+      const cmd = parts[0].toLowerCase();
+
+      if (cmd === "/model" && parts.length > 1) {
+        currentModel = parts[1].toLowerCase();
+      }
+
       const resp = await bridge.request({ type: "command", command: input });
-      console.log(resp.output || resp.error || "");
+      if (resp.output) {
+        print(resp.output);
+      } else if (handleBridgeError(resp)) {
+        // handled
+      } else {
+        print(JSON.stringify(resp));
+      }
     } else {
-      const resp = await bridge.request({ type: "prompt", text: input });
-      console.log(resp.output || resp.error || "No response");
+      const resp = await executeWithSpinner(bridge, { type: "prompt", text: input }, currentModel);
+
+      if (handleBridgeError(resp)) {
+        // handled
+      } else if (resp.output) {
+        print(formatModelResponse(currentModel, resp.output, provider));
+        if (resp.trace) {
+          printDim(`  [job ${resp.trace.job_id}] ${resp.trace.status} (${resp.trace.mode})`);
+        }
+      } else {
+        print(resp.error || "No response");
+      }
     }
 
+    rl.setPrompt(createPromptLabel(currentModel, provider));
     rl.prompt();
   });
 

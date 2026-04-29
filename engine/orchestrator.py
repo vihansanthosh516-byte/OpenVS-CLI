@@ -78,13 +78,17 @@ class Orchestrator:
             self.events.emit("job_finished", {"job_id": job.id, "status": "completed"})
             self.hooks._execute("job_finished", {"job_id": job.id, "status": "completed"})
 
-            resp = job.result or {}
-            if resp.get("stub"):
-                output = f"[{self.model}] (stub mode) Task: {task[:200]}\n  Model client not connected — API key may be missing."
-            else:
-                content = self._extract_content(resp)
-                output = content or f"[{self.model}] completed (no text in response)"
+        resp = job.result or {}
+        if resp.get("stub"):
+            fix = resp.get("fix", "set API key in config")
+            output = f"[{self.model}] (stub mode) Task: {task[:200]}\n {resp.get('error', 'API key missing')}.\n Fix: {fix}"
+        elif resp.get("error"):
+            output = f"[{self.model}] error: {resp.get('error', 'unknown')}"
+        elif resp.get("content"):
+            output = resp["content"]
         else:
+            content = self._extract_content(resp)
+            output = content or f"[{self.model}] completed (no text in response)"
             self.events.emit("error_occurred", {"job_id": job.id, "error": job.error})
             output = f"[{self.model}] job failed: {job.error}"
 
