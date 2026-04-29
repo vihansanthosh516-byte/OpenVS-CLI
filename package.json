@@ -1,20 +1,24 @@
 {
   "name": "logos-cli",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.2",
   "description": "Logos CLI — AI Operating System for structured reasoning, agents, and orchestration",
   "main": "src/index.js",
   "type": "module",
+
   "bin": {
     "logos": "./bin/logos.js"
   },
+
   "files": [
     "bin",
     "src",
     "engine"
   ],
+
   "engines": {
     "node": ">=18"
   },
+
   "keywords": [
     "ai",
     "cli",
@@ -26,33 +30,45 @@
     "nvidia",
     "llm"
   ],
+
   "author": "Logos Project",
   "license": "MIT",
+
   "repository": {
     "type": "git",
     "url": "https://github.com/logos-cli/logos-cli"
   },
+
   "bugs": {
     "url": "https://github.com/logos-cli/logos-cli/issues"
   },
+
   "homepage": "https://github.com/logos-cli/logos-cli#readme",
+
   "os": [
     "darwin",
     "linux",
     "win32"
   ],
+
   "cpu": [
     "x64",
     "arm64"
   ],
+
   "scripts": {
-    "preinstall": "node scripts/preinstall-check.cjs",
-    "postinstall": "node scripts/postinstall-doctor.cjs",
     "doctor": "node src/system/health.js",
-    "prepack": "find engine/ -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; find engine/ -name '*.pyc' -delete 2>/dev/null; find engine/ -name '*.save*' -delete 2>/dev/null; true",
-    "prepublishOnly": "node scripts/prepublish-check.cjs"
+
+    "postinstall": "node scripts/postinstall-doctor.cjs",
+
+    "prepublishOnly": "node scripts/prepublish-check.cjs",
+
+    "prepack": "find engine/ -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; find engine/ -name '*.pyc' -delete 2>/dev/null; find engine/ -name '*.save*' -delete 2>/dev/null; true"
   },
+
   "dependencies": {},
+
   "peerDependencies": {},
+
   "devDependencies": {}
 }
