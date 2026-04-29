@@ -1,6 +1,6 @@
 {
   "name": "logos-cli",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0",
   "description": "Logos CLI — AI Operating System for structured reasoning, agents, and orchestration",
   "main": "src/index.js",
   "type": "module",
